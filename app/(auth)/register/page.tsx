@@ -6,101 +6,69 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
 export default function RegisterPage() {
-  const router = useRouter()
-  const [form, setForm] = useState({ full_name: '', email: '', password: '', phone: '' })
-  const [error, setError] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const router = useRouter()
 
-  function update(field: string, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }))
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError('')
-
+    setError(null)
     const supabase = createClient()
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        data: { full_name: form.full_name, phone: form.phone },
-      },
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName, phone } }
     })
-
-    if (signUpError) {
-      setError(signUpError.message)
-      setLoading(false)
-      return
-    }
-
-    if (data.user) {
-      // Insert into profiles table
-      await supabase.from('profiles').upsert({
-        id: data.user.id,
-        full_name: form.full_name,
-        email: form.email,
-        phone: form.phone || null,
-      })
-      router.push('/dashboard')
-      router.refresh()
-    }
+    if (error) { setError(error.message); setLoading(false) }
+    else { router.push('/login') }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">P1 Engineering</h1>
-          <p className="text-sm text-gray-500 mt-1">ECU Unlock Portal</p>
-        </div>
-
-        <div className="card">
-          <h2 className="text-base font-medium text-gray-900 mb-5">Create your account</h2>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="min-h-screen bg-white flex flex-col">
+      <div className="border-b border-p1-border px-6 py-4 flex items-center">
+        <img src="https://p1engineering.io/cdn/shop/files/P1_Final_logo.png?height=40&v=1771632821" alt="P1 Protocol One Engineering" className="h-8 invert" />
+      </div>
+      <div className="flex-1 flex items-center justify-center px-4 py-16">
+        <div className="w-full max-w-md">
+          <div className="mb-10">
+            <p className="text-xs font-bold uppercase tracking-widest text-p1-sub mb-2">Customer Portal</p>
+            <h1 className="text-4xl font-black uppercase tracking-tight text-p1-black">Create Account</h1>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="label">Full name</label>
-              <input type="text" className="input" placeholder="James Dalton"
-                value={form.full_name} onChange={(e) => update('full_name', e.target.value)} required />
+              <label className="label" htmlFor="fullName">Full Name</label>
+              <input id="fullName" type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="input" placeholder="James Dalton" required />
             </div>
             <div>
-              <label className="label">Email address</label>
-              <input type="email" className="input" placeholder="you@example.com"
-                value={form.email} onChange={(e) => update('email', e.target.value)} required />
+              <label className="label" htmlFor="email">Email Address</label>
+              <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} className="input" placeholder="your@email.com" required />
             </div>
             <div>
-              <label className="label">Phone (optional)</label>
-              <input type="tel" className="input" placeholder="+61 4XX XXX XXX"
-                value={form.phone} onChange={(e) => update('phone', e.target.value)} />
+              <label className="label" htmlFor="phone">Phone <span className="text-p1-dim font-normal normal-case">(optional)</span></label>
+              <input id="phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)} className="input" placeholder="+61 4XX XXX XXX" />
             </div>
             <div>
-              <label className="label">Password</label>
-              <input type="password" className="input" placeholder="Minimum 8 characters"
-                value={form.password} onChange={(e) => update('password', e.target.value)}
-                minLength={8} required />
+              <label className="label" htmlFor="password">Password</label>
+              <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} className="input" placeholder="••••••••" required />
             </div>
-
-            {error && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                {error}
-              </p>
-            )}
-
-            <button type="submit" className="btn-primary w-full" disabled={loading}>
-              {loading ? 'Creating account…' : 'Create account'}
+            {error && <div className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+            <button type="submit" disabled={loading} className="btn-primary w-full">
+              {loading ? 'Creating account...' : 'Create Account'}
             </button>
           </form>
+          <div className="mt-6 pt-6 border-t border-p1-border">
+            <p className="text-sm text-p1-sub">Already have an account?{' '}
+              <Link href="/login" className="font-bold text-p1-black underline underline-offset-2">Sign in</Link>
+            </p>
+          </div>
         </div>
-
-        <p className="text-center text-sm text-gray-500 mt-5">
-          Already have an account?{' '}
-          <Link href="/login" className="text-primary-500 hover:underline font-medium">
-            Sign in
-          </Link>
-        </p>
       </div>
+      <div className="border-t border-p1-border px-6 py-4 text-xs text-p1-dim text-center">© 2025 Protocol One Engineering. All rights reserved.</div>
     </div>
   )
 }
