@@ -6,20 +6,18 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const router = useRouter()
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError('')
-
+    setError(null)
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-
     if (error) {
       setError(error.message)
       setLoading(false)
@@ -30,59 +28,40 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">P1 Engineering</h1>
-          <p className="text-sm text-gray-500 mt-1">ECU Unlock Portal</p>
-        </div>
-
-        <div className="card">
-          <h2 className="text-base font-medium text-gray-900 mb-5">Sign in to your account</h2>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="min-h-screen bg-white flex flex-col">
+      <div className="border-b border-p1-border px-6 py-4 flex items-center">
+        <img src="https://p1engineering.io/cdn/shop/files/P1_Final_logo.png?height=40&v=1771632821" alt="P1 Protocol One Engineering" className="h-8 invert" />
+      </div>
+      <div className="flex-1 flex items-center justify-center px-4 py-16">
+        <div className="w-full max-w-md">
+          <div className="mb-10">
+            <p className="text-xs font-bold uppercase tracking-widest text-p1-sub mb-2">Customer Portal</p>
+            <h1 className="text-4xl font-black uppercase tracking-tight text-p1-black">Sign In</h1>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="label">Email address</label>
-              <input
-                type="email"
-                className="input"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <label className="label" htmlFor="email">Email Address</label>
+              <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} className="input" placeholder="your@email.com" required />
             </div>
-
             <div>
-              <label className="label">Password</label>
-              <input
-                type="password"
-                className="input"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <label className="label" htmlFor="password">Password</label>
+              <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} className="input" placeholder="••••••••" required />
             </div>
-
-            {error && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                {error}
-              </p>
-            )}
-
-            <button type="submit" className="btn-primary w-full" disabled={loading}>
-              {loading ? 'Signing in…' : 'Sign in'}
+            {error && <div className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+            <button type="submit" disabled={loading} className="btn-primary w-full">
+              {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
+          <div className="mt-6 pt-6 border-t border-p1-border">
+            <p className="text-sm text-p1-sub">
+              New customer?{' '}
+              <Link href="/register" className="font-bold text-p1-black underline underline-offset-2">Create account</Link>
+            </p>
+          </div>
         </div>
-
-        <p className="text-center text-sm text-gray-500 mt-5">
-          No account yet?{' '}
-          <Link href="/register" className="text-primary-500 hover:underline font-medium">
-            Create one
-          </Link>
-        </p>
+      </div>
+      <div className="border-t border-p1-border px-6 py-4 text-xs text-p1-dim text-center">
+        © 2025 Protocol One Engineering. All rights reserved.
       </div>
     </div>
   )
