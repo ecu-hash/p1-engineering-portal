@@ -1,106 +1,70 @@
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import StatusBadge from '@/components/StatusBadge'
-import { Order, SERVICE_LABELS } from '@/lib/types'
-import { Plus } from 'lucide-react'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
 
 export default async function DashboardPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-
-  const { data: profile } = await supabase
-    .from('profiles').select('full_name').eq('id', user!.id).single()
+  if (!user) redirect('/login')
 
   const { data: orders } = await supabase
-    .from('orders')
-    .select('*')
-    .eq('user_id', user!.id)
-    .order('created_at', { ascending: false })
+    .from('ecu_orders').select('*').eq('user_id', user.id)
+    .order('created_at', { ascending: false }).limit(5)
 
-  const allOrders: Order[] = orders || []
-  const inProgress = allOrders.filter((o) => o.status === 'in_progress' || o.status === 'queued').length
-  const ready = allOrders.filter((o) => o.status === 'complete' && o.output_file_path).length
-  const totalSpent = allOrders
-    .filter((o) => o.stripe_payment_status === 'paid')
-    .reduce((sum, o) => sum + o.price_cents, 0)
-  const recent = allOrders.slice(0, 4)
-
-  const firstName = profile?.full_name?.split(' ')[0] || 'there'
+  const name = user.user_metadata?.full_name?.split(' ')[0] || 'Customer'
+  const sc: Record<string, string> = {
+    pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+    processing: 'bg-blue-50 text-blue-700 border-blue-200',
+    completed: 'bg-green-50 text-green-700 border-green-200',
+    shipped: 'bg-purple-50 text-purple-700 border-purple-200',
+    cancelled: 'bg-red-50 text-red-700 border-red-200',
+  }
 
   return (
-    <div>
-      <div className="mb-7">
-        <h1 className="text-xl font-semibold text-gray-900">Welcome back, {firstName}</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Here&apos;s an overview of your ECU orders.</p>
+    <div className="p-8 max-w-4xl mx-auto">
+      <div className="mb-10 border-b border-p1-border pb-6">
+        <p className="text-xs font-bold uppercase tracking-widest text-p1-sub mb-1">Welcome back</p>
+        <h1 className="text-4xl font-black uppercase tracking-tight">{name}</h1>
       </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-3 mb-7">
+      <div className="grid grid-cols-3 gap-4 mb-10">
         {[
-          { label: 'Total orders', value: allOrders.length, sub: 'All time' },
-          { label: 'In progress', value: inProgress, sub: 'Being processed' },
-          { label: 'Ready', value: ready, sub: 'Awaiting download' },
-          { label: 'Total spent', value: `$${(totalSpent / 100).toFixed(0)}`, sub: 'This year' },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-gray-50 rounded-xl p-4">
-            <p className="text-xs text-gray-500 mb-1">{stat.label}</p>
-            <p className="text-2xl font-semibold text-gray-900">{stat.value}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{stat.sub}</p>
+          { label: 'Total Orders', value: orders?.length ?? 0 },
+          { label: 'Completed', value: orders?.filter((o:any) => o.status === 'completed').length ?? 0 },
+          { label: 'In Progress', value: orders?.filter((o:any) => ['pending','processing'].includes(o.status)).length ?? 0 },
+        ].map(stat => (
+          <div key={stat.label} className="bg-white border border-p1-border p-6">
+            <p className="text-xs font-bold uppercase tracking-widest text-p1-sub mb-2">{stat.label}</p>
+            <p className="text-3xl font-black">{stat.value}</p>
           </div>
         ))}
       </div>
-
-      {/* Recent orders */}
-      <div className="card mb-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-medium text-gray-900">Recent orders</h2>
-          <Link href="/orders" className="text-xs text-primary-500 hover:underline">View all</Link>
+      <div className="bg-white border border-p1-border">
+        <div className="px-6 py-4 border-b border-p1-border flex items-center justify-between">
+          <h2 className="text-sm font-black uppercase tracking-widest">Recent Orders</h2>
+          <Link href="/orders" className="text-xs font-bold uppercase tracking-wider text-p1-sub hover:text-p1-black underline underline-offset-2">View all</Link>
         </div>
-
-        {recent.length === 0 ? (
-          <p className="text-sm text-gray-400 py-4 text-center">No orders yet.</p>
+        {!orders || orders.length === 0 ? (
+          <div className="px-6 py-12 text-center">
+            <p className="text-p1-sub text-sm mb-6">No orders yet</p>
+            <Link href="/submit" className="btn-primary inline-block">Submit your first ECU</Link>
+          </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs text-gray-400 border-b border-gray-50">
-                <th className="text-left pb-2 font-medium">Order</th>
-                <th className="text-left pb-2 font-medium">ECU</th>
-                <th className="text-left pb-2 font-medium">Vehicle</th>
-                <th className="text-left pb-2 font-medium">Status</th>
-                <th className="text-left pb-2 font-medium">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recent.map((order) => (
-                <tr key={order.id} className="border-b border-gray-50 last:border-0">
-                  <td className="py-2.5">
-                    <Link href={`/orders/${order.id}`} className="text-primary-500 font-medium hover:underline">
-                      #{order.order_number}
-                    </Link>
-                  </td>
-                  <td className="py-2.5 text-gray-600">{order.ecu_type}</td>
-                  <td className="py-2.5 text-gray-600">{order.year} {order.make} {order.model}</td>
-                  <td className="py-2.5"><StatusBadge status={order.status} /></td>
-                  <td className="py-2.5 text-gray-400 text-xs">
-                    {new Date(order.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="divide-y divide-p1-border">
+            {orders.map((order: any) => (
+              <div key={order.id} className="px-6 py-4 flex items-center justify-between hover:bg-p1-bg-alt transition-colors">
+                <div>
+                  <p className="text-sm font-bold">{order.vehicle_make} — {order.engine_type}</p>
+                  <p className="text-xs text-p1-sub mt-0.5">{new Date(order.created_at).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})}</p>
+                </div>
+                <span className={`text-xs font-bold uppercase tracking-wider px-3 py-1 border ${sc[order.status] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>{order.status}</span>
+              </div>
+            ))}
+          </div>
         )}
       </div>
-
-      {/* CTA */}
-      <Link href="/submit" className="card flex items-center gap-4 hover:border-primary-500 transition-colors cursor-pointer no-underline">
-        <div className="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center shrink-0">
-          <Plus size={20} className="text-primary-500" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-gray-900">Submit a new ECU</p>
-          <p className="text-xs text-gray-500 mt-0.5">Upload your file and pay securely online</p>
-        </div>
-      </Link>
+      <div className="mt-6">
+        <Link href="/submit" className="btn-primary inline-block">+ Submit New ECU</Link>
+      </div>
     </div>
   )
 }
