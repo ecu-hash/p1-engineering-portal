@@ -6,8 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 
 // Live product data — prices per engine sourced from p1engineering.io
 const PRODUCTS = [
-  {
-    make: 'BMW',
+  {    make: 'BMW',
     title: 'BMW SAME DAY ECU Unlock',
     subtitle: '2020+',
     engines: [
